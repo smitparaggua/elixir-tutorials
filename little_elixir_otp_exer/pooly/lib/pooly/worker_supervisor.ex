@@ -10,7 +10,7 @@ defmodule Pooly.WorkerSupervisor do
   # Callbacks
 
   def init({m, f, a}) do
-    worker_opts = [restart: :permanent, function: f]
+    worker_opts = [restart: :temporary, shutdown: 5000, function: f]
     children = [worker(m, a, worker_opts)]
     opts = [
       strategy: :simple_one_for_one,
