@@ -10,7 +10,10 @@ defmodule Pooly.PoolServer do
       :size,
       :workers,
       :name,
-      :mfa
+      :mfa,
+      :max_overflow,
+      :overflow,
+      :waiting
     ]
   end
 
@@ -24,8 +27,8 @@ defmodule Pooly.PoolServer do
     :"#{pool_name}Server"
   end
 
-  def checkout(pool_name) do
-    GenServer.call(name([pool_name]), :checkout)
+  def checkout(pool_name, block, timeout) do
+    GenServer.call(name([pool_name]), {:checkout, block}, timeout)
   end
 
   def checkin(pool_name, worker_pid) do
@@ -41,7 +44,12 @@ defmodule Pooly.PoolServer do
   def init([pool_sup, pool_config]) when is_pid(pool_sup) do
     Process.flag(:trap_exit, true)
     monitors = :ets.new(:monitors, [:private])
-    init(pool_config, %State{pool_sup: pool_sup, monitors: monitors})
+    waiting = :queue.new()
+    state = %State{
+      pool_sup: pool_sup, monitors: monitors, waiting: waiting, overflow: 0
+    }
+
+    init(pool_config, state)
   end
 
   def init([{:name, name} | rest], state) do
@@ -56,6 +64,10 @@ defmodule Pooly.PoolServer do
     init(rest, %{state | size: size})
   end
 
+  def init([{:max_overflow, max_overflow} | rest], state) do
+    init(rest, %{state | max_overflow: max_overflow})
+  end
+
   def init([_ | rest], state) do
     init(rest, state)
   end
@@ -65,19 +77,64 @@ defmodule Pooly.PoolServer do
     {:ok, state}
   end
 
-  def handle_call(:checkout, {from_pid, _ref}, %{workers: workers, monitors: monitors} = state) do
-    case workers do
-      [worker | rest] ->
-        ref = Process.monitor(from_pid)
-        true = :ets.insert(monitors, {worker, ref})
-        {:reply, worker, %{state | workers: rest}}
-      [] ->
-        {:reply, :noproc, state}
-    end
+  def handle_call(
+    {:checkout, _block},
+    {from_pid, _ref},
+    %{workers: [worker | rest], monitors: monitors} = state
+  ) do
+    ref = Process.monitor(from_pid)
+    true = :ets.insert(monitors, {worker, ref})
+    {:reply, worker, %{state | workers: rest}}
+  end
+
+  def handle_call(
+    {:checkout, _block},
+    _from,
+    %{workers: [], overflow: overflow, max_overflow: max_overflow} = state
+  ) when max_overflow > 0 and overflow < max_overflow do
+    %{
+      worker_sup: worker_sup,
+      monitors: monitors
+    } = state
+
+    {worker, ref} = new_worker(worker_sup)
+    true = :ets.insert(monitors, {worker, ref})
+    {:reply, worker, %{state | overflow: overflow + 1}}
+  end
+
+  def handle_call(
+    {:checkout, true},
+    {from_pid, _call_ref} = from,
+    %{workers: [], waiting: waiting} = state
+  ) do
+    ref = Process.monitor(from_pid)
+    waiting = :queue.in({from, ref}, waiting)
+    {:noreply, %{state | waiting: waiting}, :infinity}
+  end
+
+  def handle_call({:checkout, _block}, _from, %{workers: []} = state) do
+    {:reply, :full, state}
   end
 
   def handle_call(:status, _from, %{workers: workers, monitors: monitors} = state) do
-    {:reply, {length(workers), :ets.info(monitors, :size)}, state}
+    {:reply, {state_name(state), length(workers), :ets.info(monitors, :size)}, state}
+  end
+
+  defp state_name(%State{
+    overflow: overflow, max_overflow: max_overflow, workers: workers
+  }) when overflow < 1 do
+    case length(workers) == 0 do
+      true -> if max_overflow < 1, do: :full, else: :overflow
+      false -> :ready
+    end
+  end
+
+  defp state_name(%State{overflow: max_overflow, max_overflow: max_overflow}) do
+    :full
+  end
+
+  defp state_name(_state) do
+    :overflow
   end
 
   def handle_info(
@@ -111,15 +168,11 @@ defmodule Pooly.PoolServer do
   # crashed worker
   def handle_info(
     {:EXIT, worker_pid, _reason},
-    state = %{monitors: monitors, workers: workers, worker_sup: worker_sup}
+    %{workers: workers} = state
   ) do
     new_state =
       case Enum.member?(workers, worker_pid) do
-        true ->
-          demonitor_client(monitors, worker_pid)
-          workers = List.delete(workers, worker_pid)
-          %{state | workers: [new_worker(worker_sup) | workers]}
-
+        true -> handle_worker_exit(worker_pid, state)
         false -> state
       end
 
@@ -159,18 +212,75 @@ defmodule Pooly.PoolServer do
     worker
   end
 
+  defp handle_worker_exit(pid, state) do
+    %{
+      worker_sup: worker_sup,
+      workers: workers,
+      monitors: monitors,
+      overflow: overflow,
+      waiting: waiting
+    } = state
+
+    demonitor_client(monitors, pid)
+    workers = List.delete(workers, pid)
+
+    case :queue.out(waiting) do
+      {{:value, {from, ref}}, left} ->
+        new_worker = new_worker(worker_sup)
+        true = :ets.insert(monitors, {new_worker, ref})
+        GenServer.reply(from, new_worker)
+        %{state | waiting: left}
+
+      {:empty, empty} when overflow > 0 ->
+        %{state | overflow: overflow - 1, waiting: empty}
+
+      {:empty, empty} ->
+        workers = [new_worker(worker_sup) | workers]
+        %{state | workers: workers, waiting: empty}
+    end
+  end
+
   def handle_cast(
     {:checkin, worker},
-    state = %{workers: workers, monitors: monitors}
+    %{monitors: monitors} = state
   ) do
     case :ets.lookup(monitors, worker) do
       [{pid, ref}] ->
         true = Process.demonitor(ref)
         true = :ets.delete(monitors, pid)
-        {:noreply, %{state | workers: [pid | workers]}}
+        {:noreply, handle_checkin(pid, state)}
 
       [] -> {:noreply, state}
     end
+  end
+
+  def handle_checkin(pid, state) do
+    %{
+      worker_sup: worker_sup,
+      workers: workers,
+      monitors: monitors,
+      waiting: waiting,
+      overflow: overflow
+    } = state
+
+    case :queue.out(waiting) do
+      {{:value, {from, ref}}, left} ->
+        true = :ets.insert(monitors, {pid, ref})
+        GenServer.reply(from, pid)
+        %{state | waiting: left}
+
+      {:empty, empty} when overflow > 0 ->
+        :ok = dismiss_worker(worker_sup, pid)
+        %{state | waiting: empty, overflow: overflow - 1}
+
+      {:empty, empty} ->
+        %{state | waiting: empty, workers: [pid | workers], overflow: 0}
+    end
+  end
+
+  defp dismiss_worker(sup, pid) do
+    true = Process.unlink(pid)
+    Supervisor.terminate_child(sup, pid)
   end
 
   def terminate(_reason, _state) do
