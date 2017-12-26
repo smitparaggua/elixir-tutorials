@@ -89,7 +89,7 @@ defmodule Pooly.PoolServer do
 
   def handle_call(
     {:checkout, _block},
-    _from,
+    {from_pid, _call_ref},
     %{workers: [], overflow: overflow, max_overflow: max_overflow} = state
   ) when max_overflow > 0 and overflow < max_overflow do
     %{
@@ -97,7 +97,7 @@ defmodule Pooly.PoolServer do
       monitors: monitors
     } = state
 
-    {worker, ref} = new_worker(worker_sup)
+    {worker, ref} = new_worker(worker_sup, from_pid)
     true = :ets.insert(monitors, {worker, ref})
     {:reply, worker, %{state | overflow: overflow + 1}}
   end
@@ -210,6 +210,12 @@ defmodule Pooly.PoolServer do
     {:ok, worker} = Supervisor.start_child(sup, [[]])
     Process.link(worker)
     worker
+  end
+
+  defp new_worker(sup, from_pid) do
+    worker = new_worker(sup)
+    ref = Process.monitor(from_pid)
+    {worker, ref}
   end
 
   defp handle_worker_exit(pid, state) do
