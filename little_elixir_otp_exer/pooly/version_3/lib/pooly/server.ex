@@ -2,6 +2,8 @@ defmodule Pooly.Server do
   use GenServer
   import Supervisor.Spec
 
+  alias Pooly.PoolServer
+
   # API
 
   def start_link(pools_config) do
@@ -9,15 +11,24 @@ defmodule Pooly.Server do
   end
 
   def checkout(pool_name, block, timeout) do
-    Pooly.PoolServer.checkout(pool_name, block, timeout)
+    PoolServer.checkout(pool_name, block, timeout)
   end
 
   def checkin(pool_name, worker_pid) do
-    Pooly.PoolServer.checkin(pool_name, worker_pid)
+    PoolServer.checkin(pool_name, worker_pid)
   end
 
   def status(pool_name) do
-    Pooly.PoolServer.status(pool_name)
+    PoolServer.status(pool_name)
+  end
+
+  def transaction(pool_name, fun, timeout) do
+    worker = checkout(pool_name, true, timeout)
+    try do
+      fun.(worker)
+    after
+      checkin(pool_name, worker)
+    end
   end
 
   # Callbacks

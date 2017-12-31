@@ -13,4 +13,7 @@ defmodule SampleWorker do
     {:stop, :normal, :ok, state}
   end
 
+  def handle_call({:echo, message}, _from, state) do
+    {:reply, message, state}
+  end
 end
