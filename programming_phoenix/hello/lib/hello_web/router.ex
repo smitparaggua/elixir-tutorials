@@ -20,9 +20,16 @@ defmodule HelloWeb.Router do
     get "/", PageController, :index
 
     resources "/users", UserController
+
     resources "/sessions", SessionController,
       only: [:new, :create, :delete],
       singleton: true
+  end
+
+  scope "/cms", HelloWeb.CMS, as: :cms do
+    pipe_through [:browser, :authenticate_user]
+
+    resources "/pages", PageController
   end
 
   defp authenticate_user(conn, _) do
