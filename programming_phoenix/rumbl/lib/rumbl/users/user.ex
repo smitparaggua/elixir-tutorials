@@ -1,5 +1,5 @@
-defmodule Rumbl.User do
-  use Rumble.Web, :model
+defmodule Rumbl.Users.User do
+  use Ecto.Schema
 
   schema "users" do
     field :name, :string
@@ -7,6 +7,6 @@ defmodule Rumbl.User do
     field :password, :string, virtual: true
     field :password_hash, :string
 
-    timestamps
+    timestamps()
   end
 end
