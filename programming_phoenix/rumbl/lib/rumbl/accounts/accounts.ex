@@ -10,13 +10,13 @@ defmodule Rumbl.Accounts do
     Repo.get(User, id)
   end
 
-  def change_user(%User{} = user) do
+  def user_change(%User{} = user) do
     User.changeset(user, %{})
   end
 
   def create_user(user_params \\ %{}) do
     %User{}
-    |> User.changeset(user_params)
+    |> User.registration_changeset(user_params)
     |> Repo.insert()
   end
 end
