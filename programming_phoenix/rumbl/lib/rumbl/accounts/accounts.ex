@@ -10,6 +10,10 @@ defmodule Rumbl.Accounts do
     Repo.get(User, id)
   end
 
+  def get_user_by_username(username) do
+    Repo.get_by(User, username: username)
+  end
+
   def user_change(%User{} = user) do
     User.changeset(user, %{})
   end

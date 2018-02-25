@@ -2,6 +2,7 @@ defmodule RumblWeb.UserController do
   use RumblWeb, :controller
   alias Rumbl.Accounts
   alias Rumbl.Accounts.User
+  alias RumblWeb.Controller.Helpers
 
   plug :authenticate when action in [:index, :show]
 
@@ -24,7 +25,7 @@ defmodule RumblWeb.UserController do
     case Accounts.create_user(user_params) do
       {:ok, user} ->
         conn
-        |> login(user)
+        |> Helpers.login(user)
         |> put_flash(:info, "#{user.name} created!")
         |> redirect(to: user_path(conn, :index))
       {:error, changeset} ->
@@ -41,12 +42,5 @@ defmodule RumblWeb.UserController do
       |> redirect(to: page_path(conn, :index))
       |> halt()
     end
-  end
-
-  defp login(conn, user) do
-    conn
-    |> assign(:current_user, user)
-    |> put_session(:user_id, user.id)
-    |> configure_session(renew: true)
   end
 end
