@@ -4,8 +4,6 @@ defmodule RumblWeb.UserController do
   alias Rumbl.Accounts.User
   alias RumblWeb.Controller.Helpers
 
-  plug :authenticate when action in [:index, :show]
-
   def index(conn, _params) do
     users = Accounts.list_users()
     render(conn, "index.html", users: users)
@@ -30,17 +28,6 @@ defmodule RumblWeb.UserController do
         |> redirect(to: user_path(conn, :index))
       {:error, changeset} ->
         render(conn, "new.html", changeset: changeset)
-    end
-  end
-
-  defp authenticate(conn, _opts) do
-    if conn.assigns.current_user do
-      conn
-    else
-      conn
-      |> put_flash(:error, "You must be loggin to access that age")
-      |> redirect(to: page_path(conn, :index))
-      |> halt()
     end
   end
 end

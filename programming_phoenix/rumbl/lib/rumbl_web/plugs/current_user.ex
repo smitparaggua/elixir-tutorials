@@ -1,4 +1,4 @@
-defmodule Rumbl.CurrentUser do
+defmodule RumblWeb.CurrentUser do
   import Plug.Conn
 
   def init(opts) do

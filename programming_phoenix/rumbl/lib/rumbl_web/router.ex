@@ -7,7 +7,7 @@ defmodule RumblWeb.Router do
     plug :fetch_flash
     plug :protect_from_forgery
     plug :put_secure_browser_headers
-    plug Rumbl.CurrentUser, user_finder: &Rumbl.Accounts.get_user/1
+    plug RumblWeb.CurrentUser, user_finder: &Rumbl.Accounts.get_user/1
   end
 
   pipeline :api do
@@ -18,8 +18,13 @@ defmodule RumblWeb.Router do
     pipe_through :browser # Use the default browser stack
 
     get "/", PageController, :index
-    resources "/users", UserController, only: [:index, :show, :new, :create]
     resources "/sessions", SessionController, only: [:new, :create, :delete]
-    resources "/videos", VideoController
+    resources "/users", UserController, only: [:new, :create]
+
+    scope "/" do
+      pipe_through RumblWeb.RequireUser
+      resources "/users", UserController, only: [:index, :show]
+      resources "/videos", VideoController
+    end
   end
 end
