@@ -23,8 +23,14 @@ defmodule RumblWeb.Router do
 
     scope "/" do
       pipe_through RumblWeb.RequireUser
+
       resources "/users", UserController, only: [:index, :show]
-      resources "/videos", VideoController
     end
+  end
+
+  scope "/manage", RumblWeb do
+    pipe_through [:browser, RumblWeb.RequireUser]
+
+    resources "/videos", VideoController
   end
 end
