@@ -7,18 +7,14 @@ defmodule Rumbl.Streaming do
   alias Rumbl.Repo
 
   alias Rumbl.Streaming.Video
+  alias Video.Query
 
-  @doc """
-  Returns the list of videos.
+  def videos_of_owner(owner_id) do
+    Repo.all(from v in Video, where: v.owner_id == ^owner_id)
+  end
 
-  ## Examples
-
-      iex> list_videos()
-      [%Video{}, ...]
-
-  """
-  def list_videos do
-    Repo.all(Video)
+  def video_of_owner!(video_id, owner_id) do
+    Repo.get_by!(Video, id: video_id, owner_id: owner_id)
   end
 
   @doc """

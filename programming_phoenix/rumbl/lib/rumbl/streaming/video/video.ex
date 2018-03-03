@@ -3,7 +3,7 @@ defmodule Rumbl.Streaming.Video do
   import Ecto.Changeset
   alias Rumbl.Streaming.Video
 
-  @required_fields ~w(url title description)
+  @required_fields ~w(url title description owner_id)
   @optional_fields ~w()
 
   schema "videos" do
