@@ -4,6 +4,8 @@ defmodule RumblWeb.VideoController do
   alias Rumbl.Streaming
   alias Rumbl.Streaming.Video
 
+  plug :load_categories when action in [:new, :create, :edit, :update]
+
   def index(conn, _params, %{id: user_id}) do
     videos = Streaming.videos_of_owner(user_id)
     render(conn, "index.html", videos: videos)
@@ -65,5 +67,9 @@ defmodule RumblWeb.VideoController do
       action_name(conn),
       [conn, conn.params, conn.assigns.current_user]
     )
+  end
+
+  defp load_categories(conn, _) do
+    assign(conn, :categories, Streaming.categories())
   end
 end

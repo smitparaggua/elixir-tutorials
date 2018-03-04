@@ -4,10 +4,9 @@ defmodule Rumbl.Streaming do
   """
 
   import Ecto.Query, warn: false
-  alias Rumbl.Repo
 
-  alias Rumbl.Streaming.Video
-  alias Video.Query
+  alias Rumbl.Repo
+  alias Rumbl.Streaming.{Category, Video}
 
   def videos_of_owner(owner_id) do
     Repo.all(from v in Video, where: v.owner_id == ^owner_id)
@@ -96,5 +95,13 @@ defmodule Rumbl.Streaming do
   """
   def change_video(%Video{} = video) do
     Video.changeset(video, %{})
+  end
+
+  def categories do
+    import Category.Query
+    Category
+    |> alphabetical()
+    |> names_and_ids()
+    |> Repo.all()
   end
 end
