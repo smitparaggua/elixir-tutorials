@@ -22,5 +22,6 @@ defmodule Rumbl.Streaming.Video do
     video
     |> cast(attrs, @fields)
     |> validate_required(@required_fields)
+    |> assoc_constraint(:category)
   end
 end
