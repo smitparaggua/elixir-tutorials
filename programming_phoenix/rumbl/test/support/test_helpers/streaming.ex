@@ -13,4 +13,5 @@ defmodule Rumbl.TestHelpers.Streaming do
   end
 
   defdelegate get_video_by!(attrs), to: Streaming
+  defdelegate number_of_videos, to: Streaming
 end

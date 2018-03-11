@@ -3,13 +3,13 @@ defmodule Rumbl.Streaming do
   The Streaming context.
   """
 
-  import Ecto.Query, warn: false
-
   alias Rumbl.Repo
   alias Rumbl.Streaming.{Category, Video}
 
   def videos_of_owner(owner_id) do
-    Repo.all(from v in Video, where: v.owner_id == ^owner_id)
+    Video
+    |> Video.Query.owned_by(owner_id)
+    |> Repo.all()
   end
 
   def video_of_owner!(video_id, owner_id) do
@@ -99,6 +99,12 @@ defmodule Rumbl.Streaming do
 
   def get_video_by!(attrs) do
     Repo.get_by!(Video, attrs)
+  end
+
+  def number_of_videos do
+    Video
+    |> Video.Query.count()
+    |> Repo.one()
   end
 
   def categories do

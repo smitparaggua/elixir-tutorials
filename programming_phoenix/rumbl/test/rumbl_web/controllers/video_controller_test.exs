@@ -54,4 +54,12 @@ defmodule RumblWeb.VideoControllerTest do
     assert redirected_to(conn) == video_path(conn, :show, created.id)
     assert created.owner_id == user.id
   end
+
+  @tag login_as: "max"
+  test "does not create video and renders errors when invalid", d%{conn} do
+    before_count = Streaming.number_of_videos
+    conn = post(conn, video_path(conn, :create), video: %{invalid: "invalid"})
+    assert html_response(conn, 200) =~ "check the errors"
+    assert Streaming.number_of_videos == before_count
+  end
 end
