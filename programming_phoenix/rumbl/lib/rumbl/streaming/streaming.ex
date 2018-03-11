@@ -97,6 +97,10 @@ defmodule Rumbl.Streaming do
     Video.changeset(video, %{})
   end
 
+  def get_video_by!(attrs) do
+    Repo.get_by!(Video, attrs)
+  end
+
   def categories do
     import Category.Query
     Category
