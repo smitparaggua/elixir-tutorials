@@ -5,6 +5,9 @@ defmodule RumblWeb.VideoControllerTest do
   alias Rumbl.TestHelpers.Accounts
   alias Rumbl.TestHelpers.Streaming
 
+  @valid_attrs %{url: "http://youtu.be", title: "vid", description: "a vid"}
+  @invalid_attrs %{title: "invalid"}
+
   setup d(%{conn}) = config do
     if username = config[:login_as] do
       {:ok, user} = Accounts.create_user(d%{username})
@@ -48,7 +51,7 @@ defmodule RumblWeb.VideoControllerTest do
 
   @tag login_as: "max"
   test "creates user video and redirects", d%{conn, user}  do
-    video_attrs = %{url: "http://youtu.be", title: "vid", description: "a vid"}
+    video_attrs = @valid_attrs
     conn = post(conn, video_path(conn, :create), video: video_attrs)
     created = Streaming.get_video_by!(video_attrs)
     assert redirected_to(conn) == video_path(conn, :show, created.id)
@@ -58,8 +61,33 @@ defmodule RumblWeb.VideoControllerTest do
   @tag login_as: "max"
   test "does not create video and renders errors when invalid", d%{conn} do
     before_count = Streaming.number_of_videos
-    conn = post(conn, video_path(conn, :create), video: %{invalid: "invalid"})
+    conn = post(conn, video_path(conn, :create), video: @invalid_attrs)
     assert html_response(conn, 200) =~ "check the errors"
     assert Streaming.number_of_videos == before_count
+  end
+
+  @tag login_as: "max"
+  test "authorizes actions against access by other users", context do
+    d(%{conn, user: owner}) = context
+    {:ok, video} = Streaming.create_video(%{owner_id: owner.id})
+
+    {:ok, non_owner} = Accounts.create_user(%{username: "sneaky"})
+    conn = assign(conn, :current_user, non_owner)
+
+    assert_error_sent :not_found, fn ->
+      get(conn, video_path(conn, :show, video.id))
+    end
+
+    assert_error_sent :not_found, fn ->
+      get(conn, video_path(conn, :edit, video))
+    end
+
+    assert_error_sent :not_found, fn ->
+      get(conn, video_path(conn, :update, video, video: @valid_attrs))
+    end
+
+    assert_error_sent :not_found, fn ->
+      get(conn, video_path(conn, :delete, video))
+    end
   end
 end

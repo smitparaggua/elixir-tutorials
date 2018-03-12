@@ -3,6 +3,7 @@ defmodule Rumbl.TestHelpers.Streaming do
 
   def create_video(attrs \\ %{}) do
     defaults = %{
+      title: "Rain",
       url: "https://www.youtube.com/watch?v=i1UNSTXQhCA",
       description: "Pure awesomeness"
     }
