@@ -1,4 +1,4 @@
-defmodule Rumbl.TestHelpers.Streaming do
+defmodule Rumbl.StreamingTestHelpers do
   alias Rumbl.Streaming
 
   def create_video(attrs \\ %{}) do

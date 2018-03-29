@@ -2,15 +2,15 @@ defmodule RumblWeb.VideoControllerTest do
   import Destructure
   use RumblWeb.ConnCase
 
-  alias Rumbl.TestHelpers.Accounts
-  alias Rumbl.TestHelpers.Streaming
+  alias Rumbl.AccountsTestHelpers
+  alias Rumbl.StreamingTestHelpers
 
   @valid_attrs %{url: "http://youtu.be", title: "vid", description: "a vid"}
   @invalid_attrs %{title: "invalid"}
 
   setup d(%{conn}) = config do
     if username = config[:login_as] do
-      {:ok, user} = Accounts.create_user(d%{username})
+      {:ok, user} = AccountsTestHelpers.create_user(d%{username})
       conn = assign(conn, :current_user, user)
       {:ok, d%{conn, user}}
     else
@@ -37,11 +37,11 @@ defmodule RumblWeb.VideoControllerTest do
   @tag login_as: "max"
   test "list all user's videos on index", d%{conn, user} do
     {:ok, user_video} =
-      Streaming.create_video(%{owner_id: user.id, title: "funny cats"})
+      StreamingTestHelpers.create_video(%{owner_id: user.id, title: "funny cats"})
 
-    {:ok, other_user} = Accounts.create_user()
+    {:ok, other_user} = AccountsTestHelpers.create_user()
     {:ok, other_video} =
-      Streaming.create_video(%{title: "another video", owner_id: other_user.id})
+      StreamingTestHelpers.create_video(%{title: "another video", owner_id: other_user.id})
 
     conn = get(conn, video_path(conn, :index))
     assert html_response(conn, 200) =~ ~r/Listing Videos/
@@ -53,25 +53,25 @@ defmodule RumblWeb.VideoControllerTest do
   test "creates user video and redirects", d%{conn, user}  do
     video_attrs = @valid_attrs
     conn = post(conn, video_path(conn, :create), video: video_attrs)
-    created = Streaming.get_video_by!(video_attrs)
+    created = StreamingTestHelpers.get_video_by!(video_attrs)
     assert redirected_to(conn) == video_path(conn, :show, created.id)
     assert created.owner_id == user.id
   end
 
   @tag login_as: "max"
   test "does not create video and renders errors when invalid", d%{conn} do
-    before_count = Streaming.number_of_videos
+    before_count = StreamingTestHelpers.number_of_videos
     conn = post(conn, video_path(conn, :create), video: @invalid_attrs)
     assert html_response(conn, 200) =~ "check the errors"
-    assert Streaming.number_of_videos == before_count
+    assert StreamingTestHelpers.number_of_videos == before_count
   end
 
   @tag login_as: "max"
   test "authorizes actions against access by other users", context do
     d(%{conn, user: owner}) = context
-    {:ok, video} = Streaming.create_video(%{owner_id: owner.id})
+    {:ok, video} = StreamingTestHelpers.create_video(%{owner_id: owner.id})
 
-    {:ok, non_owner} = Accounts.create_user(%{username: "sneaky"})
+    {:ok, non_owner} = AccountsTestHelpers.create_user(%{username: "sneaky"})
     conn = assign(conn, :current_user, non_owner)
 
     assert_error_sent :not_found, fn ->

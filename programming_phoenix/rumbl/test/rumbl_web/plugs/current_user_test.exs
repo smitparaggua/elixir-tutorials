@@ -23,7 +23,6 @@ defmodule RumblWeb.CurrentUserTest do
     end
   end
 
-  # TODO I stopped here
   describe "user exists that matches user_id" do
     test "assigns the matched user to connection", d%{conn} do
       user = %Accounts.User{id: 27}
@@ -39,14 +38,24 @@ defmodule RumblWeb.CurrentUserTest do
 
   describe "no user exists with the user_id" do
     test "assigns the matched user to connection", d%{conn} do
-      user = %Accounts.User{id: 27}
-      user_finder = &(&1 == 27 && user)
+      user_finder = fn (_) -> nil end
       conn =
         conn
         |> put_session(:user_id, 27)
         |> CurrentUser.call(user_finder)
 
-      assert conn.assigns[:current_user] == user
+      assert conn.assigns[:current_user] == nil
     end
+  end
+
+  test "cal places the user from session into assigns", d%{conn} do
+    user = %Accounts.User{id: 27}
+    user_finder = &(&1 == 27 && user)
+    conn =
+      conn
+      |> put_session(:user_id, user.id)
+      |> CurrentUser.call(user_finder)
+
+    assert conn.assigns.current_user.id == user.id
   end
 end

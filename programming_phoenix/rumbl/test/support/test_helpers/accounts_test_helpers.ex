@@ -1,4 +1,4 @@
-defmodule Rumbl.TestHelpers.Accounts do
+defmodule Rumbl.AccountsTestHelpers do
   alias Rumbl.Accounts
 
   def create_user(user_params \\ %{}) do

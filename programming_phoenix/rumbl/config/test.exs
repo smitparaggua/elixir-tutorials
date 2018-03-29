@@ -17,6 +17,8 @@ config :rumbl, Rumbl.Repo,
   hostname: "localhost",
   pool: Ecto.Adapters.SQL.Sandbox
 
+config :pbkdf2_elixir, rounds: 1
+
 if File.exists?("config/test.secret.exs") do
   import_config "test.secret.exs"
 end
