@@ -2,7 +2,6 @@ defmodule RumblWeb.VideoController do
   use RumblWeb, :controller
 
   alias Rumbl.Streaming
-  alias Rumbl.Streaming.Video
 
   plug :load_categories when action in [:new, :create, :edit, :update]
 
@@ -12,7 +11,7 @@ defmodule RumblWeb.VideoController do
   end
 
   def new(conn, _params, %{id: user_id}) do
-    changeset = Streaming.change_video(%Video{owner_id: user_id})
+    changeset = Streaming.change_video(%{owner_id: user_id})
     render(conn, "new.html", changeset: changeset)
   end
 

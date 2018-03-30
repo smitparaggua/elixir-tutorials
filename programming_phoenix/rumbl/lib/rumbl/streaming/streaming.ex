@@ -97,6 +97,12 @@ defmodule Rumbl.Streaming do
     Video.changeset(video, %{})
   end
 
+  def change_video(initial_params = %{}) do
+    Video
+    |> struct(initial_params)
+    |> Video.changeset(%{})
+  end
+
   def get_video_by!(attrs) do
     Repo.get_by!(Video, attrs)
   end
