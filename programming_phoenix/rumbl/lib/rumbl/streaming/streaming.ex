@@ -3,8 +3,9 @@ defmodule Rumbl.Streaming do
   The Streaming context.
   """
 
+  import Destructure
   alias Rumbl.Repo
-  alias Rumbl.Streaming.{Category, Video}
+  alias Rumbl.Streaming.{Category, Video, Annotation}
 
   def videos_of_owner(owner_id) do
     Video
@@ -119,5 +120,36 @@ defmodule Rumbl.Streaming do
     |> alphabetical()
     |> names_and_ids()
     |> Repo.all()
+  end
+
+  def add_annotation(user_id, video_id, attrs) do
+    d(%Annotation{user_id, video_id})
+    |> Annotation.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def first_annotations_of_video(video_id, limit, after_id)
+  when is_integer(video_id) and is_integer(limit) do
+    Annotation
+    |> Annotation.Query.in_video(video_id)
+    |> Annotation.Query.first(limit)
+    |> Annotation.Query.after_id(after_id)
+    |> Repo.all()
+  end
+
+  def annotations_with_user(annotations, list_users)
+  when is_list(annotations) and is_function(list_users) do
+    annotations
+    |> Enum.map(&Map.get(&1, :user_id))
+    |> list_users.()
+    |> connect_users(annotations)
+  end
+
+  defp connect_users(users, annotations) do
+    user_map = Enum.into(users, %{}, fn user -> {user.id, user} end)
+    Enum.map(annotations, fn annotation ->
+      user = user_map[annotation.user_id]
+      Map.put(annotation, :user, user)
+    end)
   end
 end

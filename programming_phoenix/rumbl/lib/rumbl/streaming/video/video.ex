@@ -1,7 +1,7 @@
 defmodule Rumbl.Streaming.Video do
   use Ecto.Schema
   import Ecto.Changeset
-  alias Rumbl.Streaming.{Video, Category}
+  alias Rumbl.Streaming.{Video, Category, Annotation}
 
   @required_fields ~w(url title description owner_id)a
   @optional_fields ~w(category_id)a
@@ -15,7 +15,9 @@ defmodule Rumbl.Streaming.Video do
     field :url, :string
     field :slug, :string
     field :owner_id, :integer, source: :user_id
+
     belongs_to :category, Category
+    has_many :annotations, Annotation
 
     timestamps()
   end
