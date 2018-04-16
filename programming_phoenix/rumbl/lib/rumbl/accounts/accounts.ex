@@ -19,6 +19,12 @@ defmodule Rumbl.Accounts do
     Repo.get_by(User, username: username)
   end
 
+  def user_of_backend(backend) do
+    if Enum.member?(["wolfram"], backend),
+      do: Repo.get_by!(User, username: backend),
+      else: raise "Unknown backend: #{inspect backend}"
+  end
+
   def user_change(%User{} = user) do
     User.changeset(user, %{})
   end

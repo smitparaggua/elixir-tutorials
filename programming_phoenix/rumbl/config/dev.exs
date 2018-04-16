@@ -31,6 +31,7 @@ config :rumbl, RumblWeb.Endpoint,
 # different ports.
 
 # Watch static and templates for browser reloading.
+
 config :rumbl, RumblWeb.Endpoint,
   live_reload: [
     patterns: [
@@ -52,7 +53,6 @@ config :phoenix, :stacktrace_depth, 20
 config :rumbl, Rumbl.Repo,
   adapter: Ecto.Adapters.Postgres,
   username: "jmparaggua",
-  #password: "postgres",
   database: "rumbl_dev",
   hostname: "localhost",
   pool_size: 10

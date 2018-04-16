@@ -2,7 +2,7 @@ defmodule RumblWeb.VideoChannel do
   use RumblWeb, :channel
   import Destructure
   alias Rumbl.{Streaming, Accounts}
-  alias RumblWeb.{UserView, AnnotationView}
+  alias RumblWeb.{AnnotationView}
 
   def join("videos:" <> video_id, params, socket) do
     last_seen_id = params["last_seen_id"] || 0
@@ -33,18 +33,35 @@ defmodule RumblWeb.VideoChannel do
   def handle_in("new_annotation", params, user, socket) do
     case Streaming.add_annotation(user.id, socket.assigns.video_id, params) do
       {:ok, annotation} ->
-        message = %{
-          user: UserView.render("user.json", d%{user}),
-          body: annotation.body,
-          at: annotation.at,
-          id: annotation.id
-        }
-
-        broadcast!(socket, "new_annotation", message)
+        annotation = Map.put(annotation, :user, user)
+        broadcast_annotation(socket, annotation)
+        Task.start_link(fn -> compute_additional_info(annotation, socket) end)
         {:reply, :ok, socket}
 
       {:error, changeset} ->
         {:reply, {:error, %{errors: changeset}}, socket}
+    end
+  end
+
+  def broadcast_annotation(socket, annotation) do
+    rendered_annotation =
+      Phoenix.View.render(AnnotationView, "annotation.json", d%{annotation})
+
+    broadcast!(socket, "new_annotation", rendered_annotation)
+  end
+
+  def compute_additional_info(annotation, socket) do
+    results = Rumbl.InfoSys.compute(annotation.body, limit: 1, timeout: 10_000)
+    for result <- results do
+      attrs = %{url: result.url, body: result.text, at: annotation.at}
+      user = Accounts.user_of_backend(result.backend)
+      case Streaming.add_annotation(user.id, socket.assigns.video_id, attrs) do
+        {:ok, info_annotation} ->
+          info_annotation = Map.put(info_annotation, :user, user)
+          broadcast_annotation(socket, info_annotation)
+
+        {:error, _changeset} -> :ignore
+      end
     end
   end
 end

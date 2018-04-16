@@ -7,7 +7,8 @@ defmodule Rumbl.Application do
     children = [
       supervisor(Rumbl.Repo, []),
       supervisor(RumblWeb.Endpoint, []),
-      worker(Rumbl.CounterGenServer, [5])
+      supervisor(Rumbl.InfoSys.Supervisor, [])
+      # worker(Rumbl.CounterGenServer, [5])
     ]
 
     opts = [strategy: :one_for_one, name: Rumbl.Supervisor]
